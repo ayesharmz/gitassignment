@@ -1,117 +1,63 @@
-# Custom Module
+# Custom CLI Script
 
-A module is a package of reusable functionalities. It can be integrated into your Medusa application without affecting the overall system. You can create a module as part of a plugin.
+A custom CLI script is a function to execute through Medusa's CLI tool. This is useful when creating custom Medusa tooling to run as a CLI tool.
 
-> Learn more about modules in [this documentation](https://docs.medusajs.com/learn/fundamentals/modules).
+> Learn more about custom CLI scripts in [this documentation](https://docs.medusajs.com/learn/fundamentals/custom-cli-scripts).
 
-To create a module:
+## How to Create a Custom CLI Script?
 
-## 1. Create a Data Model
+To create a custom CLI script, create a TypeScript or JavaScript file under the `src/scripts` directory. The file must default export a function.
 
-A data model represents a table in the database. You create a data model in a TypeScript or JavaScript file under the `models` directory of a module.
+For example, create the file `src/scripts/my-script.ts` with the following content:
 
-For example, create the file `src/modules/blog/models/post.ts` with the following content:
+```ts title="src/scripts/my-script.ts"
+import { 
+  ExecArgs,
+} from "@medusajs/framework/types"
 
-```ts
-import { model } from "@medusajs/framework/utils"
+export default async function myScript ({
+  container
+}: ExecArgs) {
+  const productModuleService = container.resolve("product")
 
-const Post = model.define("post", {
-  id: model.id().primaryKey(),
-  title: model.text(),
-})
+  const [, count] = await productModuleService.listAndCountProducts()
 
-export default Post
-```
-
-## 2. Create a Service
-
-A module must define a service. A service is a TypeScript or JavaScript class holding methods related to a business logic or commerce functionality.
-
-For example, create the file `src/modules/blog/service.ts` with the following content:
-
-```ts
-import { MedusaService } from "@medusajs/framework/utils"
-import Post from "./models/post"
-
-class BlogModuleService extends MedusaService({
-  Post,
-}){
+  console.log(`You have ${count} product(s)`)
 }
-
-export default BlogModuleService
 ```
 
-## 3. Export Module Definition
+The function receives as a parameter an object having a `container` property, which is an instance of the Medusa Container. Use it to resolve resources in your Medusa application.
 
-A module must have an `index.ts` file in its root directory that exports its definition. The definition specifies the main service of the module.
+---
 
-For example, create the file `src/modules/blog/index.ts` with the following content:
+## How to Run Custom CLI Script?
 
-```ts
-import BlogModuleService from "./service"
-import { Module } from "@medusajs/framework/utils"
-
-export const BLOG_MODULE = "blog"
-
-export default Module(BLOG_MODULE, {
-  service: BlogModuleService,
-})
-```
-
-## 4. Add Module to Medusa's Configurations
-
-To start using the module, add it to `medusa-config.ts`:
-
-```ts
-module.exports = defineConfig({
-  projectConfig: {
-    // ...
-  },
-  modules: [
-    {
-      resolve: "./src/modules/blog",
-    },
-  ],
-})
-```
-
-## 5. Generate and Run Migrations
-
-To generate migrations for your module, run the following command:
+To run the custom CLI script, run the `exec` command:
 
 ```bash
-npx medusa db:generate blog
+npx medusa exec ./src/scripts/my-script.ts
 ```
 
-Then, to run migrations, run the following command:
+---
 
-```bash
-npx medusa db:migrate
-```
+## Custom CLI Script Arguments
 
-## Use Module
+Your script can accept arguments from the command line. Arguments are passed to the function's object parameter in the `args` property.
 
-You can use the module in customizations within the Medusa application, such as workflows and API routes.
-
-For example, to use the module in an API route:
+For example:
 
 ```ts
-import { MedusaRequest, MedusaResponse } from "@medusajs/framework"
-import BlogModuleService from "../../../modules/blog/service"
-import { BLOG_MODULE } from "../../../modules/blog"
+import { ExecArgs } from "@medusajs/framework/types"
 
-export async function GET(
-  req: MedusaRequest,
-  res: MedusaResponse
-): Promise<void> {
-  const blogModuleService: BlogModuleService = req.scope.resolve(
-    BLOG_MODULE
-  )
-
-  const posts = await blogModuleService.listPosts()
-
-  res.json({
-    posts
-  })
+export default async function myScript ({
+  args
+}: ExecArgs) {
+  console.log(`The arguments you passed: ${args}`)
 }
+```
+
+Then, pass the arguments in the `exec` command after the file path:
+
+```bash
+npx medusa exec ./src/scripts/my-script.ts arg1 arg2
 ```
