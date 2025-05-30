@@ -1,61 +1,81 @@
-# Custom subscribers
+# Custom Workflows
 
-Subscribers handle events emitted in the Medusa application.
+A workflow is a series of queries and actions that complete a task.
 
-> Learn more about Subscribers in [this documentation](https://docs.medusajs.com/learn/fundamentals/events-and-subscribers).
+The workflow is created in a TypeScript or JavaScript file under the `src/workflows` directory.
 
-The subscriber is created in a TypeScript or JavaScript file under the `src/subscribers` directory.
+> Learn more about workflows in [this documentation](https://docs.medusajs.com/learn/fundamentals/workflows).
 
-For example, create the file `src/subscribers/product-created.ts` with the following content:
+For example:
 
 ```ts
 import {
-  type SubscriberConfig,
-} from "@medusajs/framework"
+  createStep,
+  createWorkflow,
+  WorkflowResponse,
+  StepResponse,
+} from "@medusajs/framework/workflows-sdk"
 
-// subscriber function
-export default async function productCreateHandler() {
-  console.log("A product was created")
+const step1 = createStep("step-1", async () => {
+  return new StepResponse(`Hello from step one!`)
+})
+
+type WorkflowInput = {
+  name: string
 }
 
-// subscriber config
-export const config: SubscriberConfig = {
-  event: "product.created",
+const step2 = createStep(
+  "step-2",
+  async ({ name }: WorkflowInput) => {
+    return new StepResponse(`Hello ${name} from step two!`)
+  }
+)
+
+type WorkflowOutput = {
+  message1: string
+  message2: string
 }
+
+const helloWorldWorkflow = createWorkflow(
+  "hello-world",
+  (input: WorkflowInput) => {
+    const greeting1 = step1()
+    const greeting2 = step2(input)
+    
+    return new WorkflowResponse({
+      message1: greeting1,
+      message2: greeting2
+    })
+  }
+)
+
+export default helloWorldWorkflow
 ```
 
-A subscriber file must export:
+## Execute Workflow
 
-- The subscriber function that is an asynchronous function executed whenever the associated event is triggered.
-- A configuration object defining the event this subscriber is listening to.
+You can execute the workflow from other resources, such as API routes, scheduled jobs, or subscribers.
 
-## Subscriber Parameters
-
-A subscriber receives an object having the following properties:
-
-- `event`: An object holding the event's details. It has a `data` property, which is the event's data payload.
-- `container`: The Medusa container. Use it to resolve modules' main services and other registered resources.
+For example, to execute the workflow in an API route:
 
 ```ts
 import type {
-  SubscriberArgs,
-  SubscriberConfig,
+  MedusaRequest,
+  MedusaResponse,
 } from "@medusajs/framework"
+import myWorkflow from "../../../workflows/hello-world"
 
-export default async function productCreateHandler({
-  event: { data },
-  container,
-}: SubscriberArgs<{ id: string }>) {
-  const productId = data.id
+export async function GET(
+  req: MedusaRequest,
+  res: MedusaResponse
+) {
+  const { result } = await myWorkflow(req.scope)
+    .run({
+      input: {
+        name: req.query.name as string,
+      },
+    })
 
-  const productModuleService = container.resolve("product")
-
-  const product = await productModuleService.retrieveProduct(productId)
-
-  console.log(`The product ${product.title} was created`)
-}
-
-export const config: SubscriberConfig = {
-  event: "product.created",
+  res.send(result)
 }
 ```
