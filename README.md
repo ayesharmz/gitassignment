@@ -1,38 +1,26 @@
-# Custom scheduled jobs
+# Module Links
 
-A scheduled job is a function executed at a specified interval of time in the background of your Medusa application.
+A module link forms an association between two data models of different modules, while maintaining module isolation.
 
-> Learn more about scheduled jobs in [this documentation](https://docs.medusajs.com/learn/fundamentals/scheduled-jobs).
+> Learn more about links in [this documentation](https://docs.medusajs.com/learn/fundamentals/module-links)
 
-A scheduled job is created in a TypeScript or JavaScript file under the `src/jobs` directory.
-
-For example, create the file `src/jobs/hello-world.ts` with the following content:
+For example:
 
 ```ts
-import {
-  MedusaContainer
-} from "@medusajs/framework/types";
+import BlogModule from "../modules/blog"
+import ProductModule from "@medusajs/medusa/product"
+import { defineLink } from "@medusajs/framework/utils"
 
-export default async function myCustomJob(container: MedusaContainer) {
-  const productService = container.resolve("product")
-
-  const products = await productService.listAndCountProducts();
-
-  // Do something with the products
-}
-
-export const config = {
-  name: "daily-product-report",
-  schedule: "0 0 * * *", // Every day at midnight
-};
+export default defineLink(
+  ProductModule.linkable.product,
+  BlogModule.linkable.post
+)
 ```
 
-A scheduled job file must export:
+This defines a link between the Product Module's `product` data model and the Blog Module (custom module)'s `post` data model.
 
-- The function to be executed whenever it’s time to run the scheduled job.
-- A configuration object defining the job. It has three properties:
-  - `name`: a unique name for the job.
-  - `schedule`: a [cron expression](https://crontab.guru/).
-  - `numberOfExecutions`: an optional integer, specifying how many times the job will execute before being removed
+Then, in the Medusa application, run the following command to sync the links to the database:
 
-The `handler` is a function that accepts one parameter, `container`, which is a `MedusaContainer` instance used to resolve services.
+```bash
+npx medusa db:migrate
+```
