@@ -1,63 +1,61 @@
-# Custom CLI Script
+# Custom subscribers
 
-A custom CLI script is a function to execute through Medusa's CLI tool. This is useful when creating custom Medusa tooling to run as a CLI tool.
+Subscribers handle events emitted in the Medusa application.
 
-> Learn more about custom CLI scripts in [this documentation](https://docs.medusajs.com/learn/fundamentals/custom-cli-scripts).
+> Learn more about Subscribers in [this documentation](https://docs.medusajs.com/learn/fundamentals/events-and-subscribers).
 
-## How to Create a Custom CLI Script?
+The subscriber is created in a TypeScript or JavaScript file under the `src/subscribers` directory.
 
-To create a custom CLI script, create a TypeScript or JavaScript file under the `src/scripts` directory. The file must default export a function.
-
-For example, create the file `src/scripts/my-script.ts` with the following content:
-
-```ts title="src/scripts/my-script.ts"
-import { 
-  ExecArgs,
-} from "@medusajs/framework/types"
-
-export default async function myScript ({
-  container
-}: ExecArgs) {
-  const productModuleService = container.resolve("product")
-
-  const [, count] = await productModuleService.listAndCountProducts()
-
-  console.log(`You have ${count} product(s)`)
-}
-```
-
-The function receives as a parameter an object having a `container` property, which is an instance of the Medusa Container. Use it to resolve resources in your Medusa application.
-
----
-
-## How to Run Custom CLI Script?
-
-To run the custom CLI script, run the `exec` command:
-
-```bash
-npx medusa exec ./src/scripts/my-script.ts
-```
-
----
-
-## Custom CLI Script Arguments
-
-Your script can accept arguments from the command line. Arguments are passed to the function's object parameter in the `args` property.
-
-For example:
+For example, create the file `src/subscribers/product-created.ts` with the following content:
 
 ```ts
-import { ExecArgs } from "@medusajs/framework/types"
+import {
+  type SubscriberConfig,
+} from "@medusajs/framework"
 
-export default async function myScript ({
-  args
-}: ExecArgs) {
-  console.log(`The arguments you passed: ${args}`)
+// subscriber function
+export default async function productCreateHandler() {
+  console.log("A product was created")
+}
+
+// subscriber config
+export const config: SubscriberConfig = {
+  event: "product.created",
 }
 ```
 
-Then, pass the arguments in the `exec` command after the file path:
+A subscriber file must export:
 
-```bash
-npx medusa exec ./src/scripts/my-script.ts arg1 arg2
+- The subscriber function that is an asynchronous function executed whenever the associated event is triggered.
+- A configuration object defining the event this subscriber is listening to.
+
+## Subscriber Parameters
+
+A subscriber receives an object having the following properties:
+
+- `event`: An object holding the event's details. It has a `data` property, which is the event's data payload.
+- `container`: The Medusa container. Use it to resolve modules' main services and other registered resources.
+
+```ts
+import type {
+  SubscriberArgs,
+  SubscriberConfig,
+} from "@medusajs/framework"
+
+export default async function productCreateHandler({
+  event: { data },
+  container,
+}: SubscriberArgs<{ id: string }>) {
+  const productId = data.id
+
+  const productModuleService = container.resolve("product")
+
+  const product = await productModuleService.retrieveProduct(productId)
+
+  console.log(`The product ${product.title} was created`)
+}
+
+export const config: SubscriberConfig = {
+  event: "product.created",
+}
 ```
